@@ -47,3 +47,52 @@ keeps Sharpe 0.61 vs 0.62 and cuts the maximum drawdown from 43% to 28% (50/50: 
 python3 src/fetch.py && python3 src/fetch_fred.py   # downloads ~16 MB
 python3 src/evaluate.py                             # ~5 s
 ```
+
+---
+
+# Project 3: a control-barrier-function drawdown guard
+
+**Question**: on the project-1 books, does a CBF guard keep drawdowns inside a limit more cheaply than
+plain vol targeting or the classic Grossman-Zhou (1993) drawdown rule?
+
+**Guard** (`src/guard.py`): safe set h = L − DD ≥ 0 with L = 15% drawdown from the 1-year high. The discrete CBF
+condition h(t+1) ≥ (1−γ)·h(t) under a k-sigma one-day loss gives the exposure
+
+  s = min(1, (γ/k) · h / (σ̂ · (1 − DD)))
+
+i.e. **Grossman-Zhou with its constant multiplier replaced by γ/(k·σ̂)**: it de-risks harder when volatility is high.
+"Vol-aware" uses σ̂ = max(10-day, 60-day EWMA), as in the market maker's vol-aware barrier.
+
+**Protocol** (`src/eval_guard.py`, `src/frontier.py`): one parameter per guard, chosen on 1990–2007 (most return with
+drawdown ≤ L); 2008–2026 untouched. Then a return-vs-breach-risk frontier over 200 block-bootstrap histories
+(63-day blocks), the same histories for every guard.
+
+## Results
+
+Out of sample, 2008–2026, settings chosen on 1990–2007 (`results/guard_summary.csv`):
+
+| Book | Guard | Ann. return | Sharpe | Max DD (1-yr) | Days over limit |
+|---|---|---|---|---|---|
+| Long-only indices | none (vol target) | 5.8% | 0.47 | 31.9% | 15.8% |
+| | Grossman-Zhou | 5.0% | 0.48 | 15.1% | 0.2% |
+| | **CBF, vol-aware** | 5.4% | **0.52** | 15.0% | **0** |
+| Trend+carry book | none | −0.6% | −0.05 | 19.3% | 8.5% |
+| | Grossman-Zhou | −2.2% | −0.20 | 15.0% | 1.1% |
+| | **CBF, vol-aware** | −1.4% | −0.15 | 13.9% | **0** |
+| 70/30 blend | none | 4.1% | 0.38 | 24.1% | 10.7% |
+| | Grossman-Zhou | 3.6% | 0.36 | 14.9% | 0 |
+| | **CBF, vol-aware** | 4.4% | **0.46** | 14.6% | **0** |
+
+Frontier (best return with bootstrap P(breach) ≤ 5%): vol-aware CBF beats Grossman-Zhou by **+38 bp/yr** (long-only),
+**+33 bp/yr** (blend) and +11 bp/yr (trend book), ahead on 74–82% of paired histories.
+
+**Verdict**: the vol-aware barrier is a strict improvement on Grossman-Zhou here: same or better safety, more return.
+On the blend it even beats doing nothing on Sharpe (0.46 vs 0.38) while halving the worst drawdown. It does not
+create alpha: on the trend book (no edge) every guard loses a little to insurance cost.
+
+**Caveats**
+- The limit is from the 1-year high, so losses can still add up beyond L over longer spans (all-time max DD ~18–20%).
+- Frontier t-stats (10–12) overstate certainty: the paths are resampled from one 19-year history.
+- Settings chosen "at the edge" of the training limit are fragile; bootstrap breach odds for those single points
+  swing from 0% to 74%, which is why the frontier is the main comparison.
+- Daily data: an intraday gap larger than k·σ̂ can still breach the limit; no guard can prevent that.
