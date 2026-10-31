@@ -25,6 +25,7 @@ def point(sym):
 
 
 def fetch(url, tries=4):
+    err = None
     for k in range(tries):
         try:
             with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"}), timeout=30) as r:
@@ -33,9 +34,9 @@ def fetch(url, tries=4):
             if e.code == 404:
                 return b""
             time.sleep(2 ** k)
-        except Exception:
-            time.sleep(2 ** k)
-    raise RuntimeError("failed: " + url)
+        except Exception as e:
+            err = e; time.sleep(2 ** k)
+    raise RuntimeError(f"failed: {url} ({err!r}) -- if this is an SSL error you are on a network that blocks Dukascopy")
 
 
 def candles(blob, t0, sym):
@@ -52,7 +53,7 @@ def candles(blob, t0, sym):
 
 def units(minute, start):
     """(url suffix, start time) for every month (hourly) or day (minute) up to yesterday."""
-    d = start; end = dt.datetime.utcnow() - dt.timedelta(days=1)
+    d = start; end = dt.datetime.now(dt.timezone.utc).replace(tzinfo=None) - dt.timedelta(days=1)
     while d < end:
         if minute:
             if d.weekday() != 5:                    # no trading on Saturdays
