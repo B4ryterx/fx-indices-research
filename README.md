@@ -1,4 +1,15 @@
-# Trend and carry on FX majors and equity indices
+# FX and equity-index research: trend, pairs, and a barrier-function risk guard
+
+Three honest tests on 7 FX majors and 11 equity indices (daily, 1985–2026), each with costs, out-of-sample
+splits and multiple-testing checks:
+
+| Project | Result |
+|---|---|
+| 3. Control-barrier-function drawdown guard | **Zero days over a 15% drawdown limit out of sample (2008–2026) on every book, and +0.3–0.4%/yr over Grossman-Zhou at equal breach risk** |
+| 1. Trend and carry | No significant alpha; useful as a crash cushion (30% trend cuts a long-only book's max drawdown from 43% to 28%) |
+| 2. Pairs (cointegration, distance) | No tradable edge; the apparent Sharpe of 0.28 came from non-synchronous closes |
+
+## Project 1: trend and carry on FX majors and equity indices
 
 Project 1 of the forex/indices track. A textbook (Carver / Moskowitz-Ooi-Pedersen)
 trend-and-carry system, built with **no fitted parameters**, scored honestly.
@@ -7,7 +18,7 @@ trend-and-carry system, built with **no fitted parameters**, scored honestly.
 11 equity indices (SPX, NDX, DJI, RUT, DAX, FTSE, CAC, SX5E, NKY, HSI, ASX; 1985→).
 **Data**: Yahoo daily closes; FRED 3-month rates for FX carry (lagged one month).
 
-## Method
+### Method
 - Forecasts: EWMAC trend at 4 speeds (8/32 … 64/256), FX carry = rate differential / vol.
   Scaled to average |10|, capped at 20, using expanding (past-only) statistics.
 - Positions: 10% vol target, equal risk per instrument, leverage from last year's realised vol.
@@ -15,7 +26,7 @@ trend-and-carry system, built with **no fitted parameters**, scored honestly.
 - Evaluation: Newey-West t-stats, 21-day block-bootstrap Sharpe CI, Deflated Sharpe Ratio over all
   12 variants tried, sub-periods, and beta/alpha vs a long-only equal-risk index benchmark.
 
-## Results (net of costs; full table in `results/summary.csv`)
+### Results (net of costs; full table in `results/summary.csv`)
 
 | Sleeve | Sharpe | 95% CI | Equity beta | Alpha t | Deflated SR prob |
 |---|---|---|---|---|---|
@@ -35,14 +46,14 @@ now would be data-mining.
 combined book lost 0.7% on average vs 7.0% for the benchmark. Mixing 30% trend with 70% long-only (1990–2026)
 keeps Sharpe 0.61 vs 0.62 and cuts the maximum drawdown from 43% to 28% (50/50: 22%).
 
-## Limitations
+### Limitations
 - Index returns are price returns (Yahoo has no dividends) with no financing charge; the two roughly offset
   for a futures-style position, but not exactly.
 - Yahoo FX has bad ticks; `data.py` removes one-day out-and-back spikes and keeps real shocks (SNB 2011/2015, Brexit).
 - Daily closes in different time zones; each instrument is traded on its own close.
 - Dukascopy intraday bid/ask data was blocked by the network's TLS inspection; needed for project 2.
 
-## Run
+### Run
 ```
 python3 src/fetch.py && python3 src/fetch_fred.py   # downloads ~16 MB
 python3 src/evaluate.py                             # ~5 s
@@ -50,7 +61,7 @@ python3 src/evaluate.py                             # ~5 s
 
 ---
 
-# Project 3: a control-barrier-function drawdown guard
+## Project 3: a control-barrier-function drawdown guard
 
 **Question**: on the project-1 books, does a CBF guard keep drawdowns inside a limit more cheaply than
 plain vol targeting or the classic Grossman-Zhou (1993) drawdown rule?
@@ -67,7 +78,7 @@ i.e. **Grossman-Zhou with its constant multiplier replaced by γ/(k·σ̂)**: it
 drawdown ≤ L); 2008–2026 untouched. Then a return-vs-breach-risk frontier over 200 block-bootstrap histories
 (63-day blocks), the same histories for every guard.
 
-## Results
+### Results
 
 Out of sample, 2008–2026, settings chosen on 1990–2007 (`results/guard_summary.csv`):
 
@@ -99,7 +110,7 @@ create alpha: on the trend book (no edge) every guard loses a little to insuranc
 
 ---
 
-# Project 2: pairs trading (cointegration and distance), daily
+## Project 2: pairs trading (cointegration and distance), daily
 
 **Question**: do cointegrated or distance-matched pairs among the 7 FX majors and 11 indices mean-revert
 profitably out of sample?
@@ -110,7 +121,7 @@ for the distance method), freeze their hedge ratios, then trade only the next 6 
 |z| < 0.5, stop at |z| > 4, flat at the window end. Same costs as project 1. Placebo: 20 runs of random pairs under
 the same rules.
 
-## Results (2006–2026, net)
+### Results (2006–2026, net)
 
 | Variant | Sharpe | NW t | Beats random pairs |
 |---|---|---|---|
