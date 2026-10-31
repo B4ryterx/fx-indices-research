@@ -24,18 +24,26 @@ def point(sym):
     return POINT.get(sym, 1e3 if "IDX" in sym else 1e5)
 
 
-def fetch(url, tries=4):
+PAUSE = 1.0     # seconds between requests; Dukascopy answers 429 (too many requests) if you go faster
+
+
+def fetch(url, tries=8):
+    """GET with a polite pause; on 429/5xx wait 30 s, 60 s, ... up to ~10 min before giving up."""
     err = None
     for k in range(tries):
+        time.sleep(PAUSE)
         try:
             with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"}), timeout=30) as r:
                 return r.read()
         except urllib.error.HTTPError as e:
             if e.code == 404:
                 return b""
-            time.sleep(2 ** k)
+            err = e
         except Exception as e:
-            err = e; time.sleep(2 ** k)
+            err = e
+        wait = min(30 * 2 ** k, 600)
+        print(f"  {err!r}; waiting {wait} s", flush=True)
+        time.sleep(wait)
     raise RuntimeError(f"failed: {url} ({err!r}) -- if this is an SSL error you are on a network that blocks Dukascopy")
 
 
