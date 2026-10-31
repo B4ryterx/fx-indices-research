@@ -96,3 +96,38 @@ create alpha: on the trend book (no edge) every guard loses a little to insuranc
 - Settings chosen "at the edge" of the training limit are fragile; bootstrap breach odds for those single points
   swing from 0% to 74%, which is why the frontier is the main comparison.
 - Daily data: an intraday gap larger than k·σ̂ can still breach the limit; no guard can prevent that.
+
+---
+
+# Project 2: pairs trading (cointegration and distance), daily
+
+**Question**: do cointegrated or distance-matched pairs among the 7 FX majors and 11 indices mean-revert
+profitably out of sample?
+
+**Method** (`src/pairs.py`, `src/eval_pairs.py`): walk-forward from 2004. Every 6 months, look back 2 years,
+pick the 5 best pairs (Engle-Granger p < 0.05 with a 5–126-day half-life, or the 5 closest normalised price paths
+for the distance method), freeze their hedge ratios, then trade only the next 6 months: enter at |z| > 2, exit at
+|z| < 0.5, stop at |z| > 4, flat at the window end. Same costs as project 1. Placebo: 20 runs of random pairs under
+the same rules.
+
+## Results (2006–2026, net)
+
+| Variant | Sharpe | NW t | Beats random pairs |
+|---|---|---|---|
+| Cointegration, any pair | 0.28 | 1.64 | 100% |
+| Cointegration, indices, any session | 0.26 | 1.72 | 100% |
+| **Cointegration, same session only** | **−0.09** | −0.43 | 80% |
+| Cointegration, indices, same session | −0.17 | −0.82 | 50% |
+| Cointegration, FX | 0.07 | 0.34 | 95% |
+| Distance, same session | −0.44 | −2.18 | 10% |
+
+**The apparent edge was a timing artifact.** Without a session filter the most-traded pairs were FTSE/ASX, SPX/ASX,
+RUT/ASX and DJI/ASX. The ASX closes about 10 hours before London and New York, so a "spread" between their daily
+closes partly measures news that arrived after Sydney shut, and that gap "reverts" the next day when the ASX catches up.
+That's stale prices, not tradable mean reversion. Restricting pairs to markets that close together removes all of it.
+
+**Verdict**: no tradable pairs edge on daily closes in this universe. FX crosses are not reliably cointegrated
+(40% of trades converge, 28% hit the stop), and same-session index pairs (FTSE/CAC, CAC/SX5E) revert too rarely to
+beat costs. The distance method loses money: its pairs (SPX/DJI, CAC/SX5E, EUR/CHF) drift apart slowly rather than revert.
+
+**Next**: the hourly Dukascopy data allows a fair intraday test using simultaneous snapshots across sessions.
